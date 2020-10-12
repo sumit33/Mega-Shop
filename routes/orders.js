@@ -75,7 +75,53 @@ router.get('/:id' , (req,res) => {
 /* Place a new order */
 
 router.post('/new' , (req,res) => {
+    let {userID,products} = req.body;
+    if(userID!== null && userID > 0 && !isNaN(userID))
+    {
+        database.table('orders')
+                .insert({
+                    user_id: userID
+                })
+                .then(newOrderID => {
+                    if(newOrderID > 0){
+                        products.foreach( async(p) => {
+                            let data = await database.table('products').filter({id: p.id})
+                                                    .withFields(['quantity']).get();
+                            let inCart = parseInt(p.incart);
+                            if (data.quantity > 0) {
+                                data.quantity = data.quantity - inCart;
+        
+                                if (data.quantity < 0) {
+                                    data.quantity = 0;
+                                }
+        
+                            } else {
+                                data.quantity = 0;
+                            }
 
+                            database.table('order_details')
+                                .insert({
+                                    order_id: newOrderId,
+                                    product_id: p.id,
+                                    quantity: inCart
+                                })
+                                .then(newID => {
+                                    database.table('products')
+                                    .filter({id: p.id})
+                                    .update({
+                                        quantity: data.quantity
+                                    })
+                                    .then(successNum => {})
+                                    .catch(err => console.log(err));
+                                })
+                                .catch(err => console.log(err));
+                        });
+                    }else{
+                        res.json({message: 'New order failed while adding order details', success: false});
+                    }
+                })
+                .catch(err => console.log(err));
+    }
 })
 
 module.exports = router;
